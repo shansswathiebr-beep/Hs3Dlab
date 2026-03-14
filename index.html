@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HS-3D Lab v3.3 – KI-Generierung (Online-Ready)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;600&display=swap');
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; touch-action: none; }
+  canvas { width: 100vw; height: 100vh; display: block; outline: none; }
+  
+  #ui { position: absolute; top: 15px; left: 15px; z-index: 100; background: rgba(15,23,42,0.98); padding: 18px; border-radius: 12px; width: 310px; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); max-height: calc(100vh - 30px); overflow-y: auto; backdrop-filter: blur(12px); }
+  #ui h3 { margin: 0 0 4px 0; color: #d97706; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; }
+  #ui .subtitle { font-size: 0.75rem; color: #64748b; margin: 0 0 14px 0; font-weight: 500; }
+  
+  /* KI Section - Funktioniert jetzt sofort */
+  .ki-box { background: linear-gradient(135deg, rgba(217,119,6,0.15) 0%, rgba(15,23,42,0) 100%); border: 1px solid rgba(217,119,6,0.4); border-radius: 10px; padding: 14px; margin-bottom: 16px; position: relative; overflow: hidden; }
+  .ki-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #d97706, #f59e0b, #d97706); animation: scan 3s linear infinite; opacity: 0.7; }
+  @keyframes scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+  .ki-title { font-size: 0.8rem; color: #f59e0b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .ki-input-wrap { display: flex; gap: 8px; margin-bottom: 10px; }
+  .ki-input { flex: 1; background: rgba(15,23,42,0.8); border: 1px solid #475569; color: #f8fafc; padding: 10px 14px; border-radius: 8px; font-size: 0.95rem; font-family: inherit; transition: all 0.2s; }
+  .ki-input:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 3px rgba(217,119,6,0.2); background: rgba(15,23,42,0.95); }
+  .ki-btn { background: linear-gradient(135deg, #d97706 0%, #b45309 100%); border: none; color: white; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.9rem; transition: all 0.2s; white-space: nowrap; box-shadow: 0 4px 6px -1px rgba(217,119,6,0.3); }
+  .ki-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(217,119,6,0.4); }
+  .ki-btn:active { transform: scale(0.98); }
+  .ki-status { font-size: 0.75rem; color: #10b981; margin-top: 6px; font-weight: 500; display: none; }
+  .ki-status.show { display: block; }
+  .ki-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .ki-chip { background: rgba(30,41,59,0.8); border: 1px solid #334155; padding: 6px 10px; border-radius: 20px; font-size: 0.8rem; color: #94a3b8; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+  .ki-chip:hover { background: #d97706; color: white; border-color: #d97706; transform: translateY(-1px); }
+  
+  /* Open Source Search - CORS-frei via Direct Links */
+  .os-box { background: linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(15,23,42,0) 100%); border: 1px solid rgba(59,130,246,0.3); border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+  .os-title { font-size: 0.8rem; color: #60a5fa; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .os-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .os-btn { background: rgba(30,41,59,0.6); border: 1px solid #334155; color: #94a3b8; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.2s; text-align: left; display: flex; align-items: center; gap: 8px; }
+  .os-btn:hover { background: rgba(59,130,246,0.2); color: #60a5fa; border-color: #60a5fa; transform: translateX(4px); }
+  .os-btn svg { width: 18px; height: 18px; opacity: 0.7; }
+  
+  label { display: block; margin-top: 12px; font-size: 0.82rem; color: #94a3b8; letter-spacing: 0.03em; font-weight: 600; }
+  select, input[type="color"] { width: 100%; padding: 8px 12px; margin-top: 6px; border: 1px solid #334155; border-radius: 8px; background: #1e293b; color: #e2e8f0; font-size: 0.9rem; font-family: inherit; cursor: pointer; transition: all 0.2s; }
+  select:hover, input[type="color"]:hover { border-color: #475569; }
+  select:focus { outline: none; border-color: #d97706; }
+  input[type="color"] { height: 42px; padding: 4px; border-radius: 6px; }
+  input[type="range"] { width: 100%; accent-color: #d97706; margin-top: 8px; cursor: pointer; height: 6px; border-radius: 3px; background: #1e293b; -webkit-appearance: none; appearance: none; outline: none; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #d97706; border-radius: 50%; cursor: pointer; border: 2px solid #0f172a; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transition: transform 0.1s; }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+  .val { font-family: 'Roboto Mono', monospace; font-size: 0.9rem; color: #d97706; font-weight: 700; float: right; }
+  .divider { border: none; border-top: 1px solid #1e293b; margin: 18px 0; }
+  .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .preset-btn { padding: 10px 6px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; border-radius: 8px; color: #94a3b8; font-size: 0.78rem; cursor: pointer; text-align: center; transition: all 0.2s; line-height: 1.4; font-weight: 500; }
+  .preset-btn:hover { border-color: #d97706; color: #d97706; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(217,119,6,0.15); }
+  .btn-primary { width: 100%; padding: 12px; margin-top: 14px; border: none; border-radius: 10px; background: linear-gradient(90deg, #d97706 0%, #b45309 100%); color: white; font-weight: 800; cursor: pointer; font-size: 0.95rem; transition: all 0.2s; letter-spacing: 0.02em; box-shadow: 0 4px 6px -1px rgba(217,119,6,0.3); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(217,119,6,0.4); }
+  .btn-secondary { width: 100%; padding: 10px; margin-top: 8px; border: none; border-radius: 8px; background: #1e3a5f; color: #60a5fa; font-weight: 600; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; }
+  .btn-secondary:hover { background: #1e40af; color: #93c5fd; }
+  .btn-danger { width: 100%; padding: 10px; margin-top: 8px; border: none; border-radius: 8px; background: rgba(127,29,29,0.3); color: #fca5a5; font-weight: 600; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; border: 1px solid rgba(248,113,113,0.2); }
+  .btn-danger:hover { background: rgba(127,29,29,0.5); }
+  .info-row { display: flex; justify-content: space-between; font-size: 0.8rem; color: #64748b; margin-top: 6px; font-weight: 500; }
+  .info-row span { color: #d97706; font-family: 'Roboto Mono', monospace; font-weight: 700; }
+  
+  #status { position: absolute; bottom: 20px; left: 20px; background: rgba(15,23,42,0.95); padding: 12px 18px; border-radius: 10px; color: #10b981; font-family: 'Roboto Mono', monospace; font-size: 0.85rem; border: 1px solid #064e3b; max-width: 400px; backdrop-filter: blur(10px); box-shadow: 0 10px 25px rgba(0,0,0,0.5); font-weight: 600; }
+  #status.error { color: #ef4444; border-color: #7f1d1d; background: rgba(127,29,29,0.2); }
+  #toast { position: absolute; top: 20px; right: 20px; background: #10b981; color: white; padding: 16px 24px; border-radius: 12px; font-size: 0.95rem; font-weight: 700; opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; transform: translateY(-20px) scale(0.95); box-shadow: 0 20px 25px -5px rgba(16,185,129,0.4); border: 1px solid #059669; max-width: 300px; }
+  #toast.show { opacity: 1; transform: translateY(0) scale(1); }
+  #toast.error { background: #ef4444; border-color: #dc2626; box-shadow: 0 20px 25px -5px rgba(239,68,68,0.4); }
+  
+  .checkbox-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding: 8px 0; border-top: 1px solid #1e293b; }
+  .checkbox-row label { margin: 0; font-size: 0.85rem; color: #94a3b8; }
+  .checkbox-row input { width: 20px; height: 20px; accent-color: #d97706; cursor: pointer; }
+  
+  @media (max-width: 640px) {
+    #ui { width: calc(100vw - 30px); left: 15px; top: 15px; max-height: 60vh; border-radius: 12px; padding: 16px; }
+    #status { bottom: 15px; left: 15px; right: 15px; max-width: none; font-size: 0.8rem; text-align: center; }
+    .os-grid { grid-template-columns: 1fr; }
+  }
+  
+  /* Loading Overlay */
+  #loader { position: fixed; inset: 0; background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; transition: opacity 0.5s; }
+  #loader.hidden { opacity: 0; pointer-events: none; }
+  .loader-ring { width: 60px; height: 60px; border: 4px solid #1e293b; border-top-color: #d97706; border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader-text { margin-top: 20px; color: #64748b; font-size: 0.9rem; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loader">
+  <div class="loader-ring"></div>
+  <div class="loader-text">Lade 3D Engine...</div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div id="ui">
+  <h3>🔧 HS-3D Lab v3.3</h3>
+  <p class="subtitle">KI-Generierung • Open-Source Suche • Offline-fähig</p>
+  
+  <!-- KI GENERIERUNG - Funktioniert sofort -->
+  <div class="ki-box">
+    <div class="ki-title">🤖 KI-Assistent (Offline)</div>
+    <div class="ki-input-wrap">
+      <input type="text" id="kiPrompt" class="ki-input" placeholder="z.B. 'rote metallkugel 150mm'" autocomplete="off">
+      <button class="ki-btn" onclick="kiGenerate()">GENERIEREN</button>
+    </div>
+    <div id="kiStatus" class="ki-status">✅ Erkannt: Kugel, Metall, Rot, 150mm</div>
+    <div class="ki-tags">
+      <span class="ki-chip" onclick="setPrompt('kleiner blauer würfel')">🎲 Würfel</span>
+      <span class="ki-chip" onclick="setPrompt('goldene kugel groß')">🔮 Kugel</span>
+      <span class="ki-chip" onclick="setPrompt('gläserner zylinder transparent')">🥛 Glas</span>
+      <span class="ki-chip" onclick="setPrompt('grüner plastik kegel')">🔺 Kegel</span>
+    </div>
+  </div>
+
+  <!-- OPEN SOURCE - CORS-frei -->
+  <div class="os-box">
+    <div class="os-title">🌐 Open-Source Modelle</div>
+    <input type="text" id="searchInput" class="ki-input" style="margin-bottom: 10px;" placeholder="Suchen auf Thingiverse, Printables..." onkeypress="if(event.key==='Enter')searchAll()">
+    <div class="os-grid">
+      <button class="os-btn" onclick="searchThingiverse()">
+        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        Thingiverse
+      </button>
+      <button class="os-btn" onclick="searchPrintables()">
+        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        Printables
+      </button>
+      <button class="os-btn" onclick="searchGitHub()">
+        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+        GitHub STL
+      </button>
+      <button class="os-btn" onclick="searchYouMagine()">
+        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+        YouMagine
+      </button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Manuelle Steuerung -->
+  <label>Form: <span id="shapeLabel" class="val">Box</span></label>
+  <select id="shape" onchange="updateShapeLabel(); generate();">
+    <option value="box">📦 Box / Würfel</option>
+    <option value="sphere">🔵 Kugel</option>
+    <option value="cylinder">⚙️ Zylinder</option>
+    <option value="cone">🔺 Kegel</option>
+    <option value="torus">🍩 Torus (Ring)</option>
+    <option value="knot">🎀 Torus-Knoten</option>
+  </select>
+
+  <label>Breite (X): <span class="val" id="wv">100</span>mm</label>
+  <input type="range" id="w" min="10" max="400" value="100" oninput="liveUpdate()">
+
+  <label>Höhe (Y): <span class="val" id="hv">100</span>mm</label>
+  <input type="range" id="h" min="10" max="400" value="100" oninput="liveUpdate()">
+
+  <label>Tiefe (Z): <span class="val" id="dv">100</span>mm</label>
+  <input type="range" id="d" min="10" max="400" value="100" oninput="liveUpdate()">
+
+  <div class="divider"></div>
+
+  <label>Material:</label>
+  <select id="mat" onchange="generate();">
+    <option value="standard">Standard (Matte)</option>
+    <option value="metal">🔩 Metall</option>
+    <option value="plastic">🧪 Kunststoff (PLA/ABS)</option>
+    <option value="glass">💎 Glas / Transparent</option>
+    <option value="wireframe">🕸️ Wireframe</option>
+  </select>
+
+  <label>Farbe:</label>
+  <input type="color" id="color" value="#d97706" onchange="generate();">
+
+  <div class="checkbox-row">
+    <label for="rotCheck">Auto-Rotation</label>
+    <input type="checkbox" id="rotCheck" checked onchange="generate();">
+  </div>
+
+  <div class="preset-grid" style="margin-top: 12px;">
+    <button class="preset-btn" onclick="applyPreset(150,100,60,'box','#475569','metal')">🔌 Elektro-Box</button>
+    <button class="preset-btn" onclick="applyPreset(200,200,200,'sphere','#eab308','metal')">🏭 Kugelventil</button>
+    <button class="preset-btn" onclick="applyPreset(80,80,80,'box','#dc2626','plastic')">🎲 Roter Würfel</button>
+    <button class="preset-btn" onclick="applyPreset(120,40,120,'cylinder','#10b981','plastic')">☀️ Solar-Flansch</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="info-row">Volumen: <span id="vol">–</span></div>
+  <div class="info-row">Oberfläche: <span id="area">–</span></div>
+
+  <button class="btn-primary" onclick="generate(); showToast('🔄 Regeneriert');">Aktualisieren</button>
+  <button class="btn-secondary" onclick="exportFile('stl')">📦 Export als STL</button>
+  <button class="btn-secondary" onclick="exportFile('obj')">📐 Export als OBJ</button>
+  <button class="btn-danger" onclick="resetScene()">🗑️ Zurücksetzen</button>
+</div>
+
+<div id="status">⏳ Initialisiere...</div>
+<div id="toast"></div>
+
+<!-- Three.js von CDN mit Fallback-Check -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// === KONFIGURATION & STATE ===
+let scene, camera, renderer, mesh = null;
+let isDragging = false, previousMousePosition = { x: 0, y: 0 };
+const state = { w: 100, h: 100, d: 100, shape: 'box', mat: 'standard', color: '#d97706' };
+
+// === NLP VOKABULAR (Deutsch/Englisch) ===
+const vocab = {
+  shapes: {
+    'würfel': 'box', 'box': 'box', 'kiste': 'box', 'quader': 'box', 'cube': 'box',
+    'kugel': 'sphere', 'ball': 'sphere', 'sphere': 'sphere', 'sphäre': 'sphere',
+    'zylinder': 'cylinder', 'rolle': 'cylinder', 'rohr': 'cylinder', 'cylinder': 'cylinder',
+    'kegel': 'cone', 'cone': 'cone', 'pyramide': 'cone',
+    'ring': 'torus', 'torus': 'torus', 'donut': 'torus', 'reifen': 'torus',
+    'knoten': 'knot', 'knot': 'knot', 'torusknoten': 'knot'
+  },
+  materials: {
+    'metall': 'metal', 'metal': 'metal', 'stahl': 'metal', 'aluminium': 'metal', 'steel': 'metal', 'iron': 'metal',
+    'kunststoff': 'plastic', 'plastic': 'plastic', 'pla': 'plastic', 'abs': 'plastic', 'nylon': 'plastic', 'plastik': 'plastic',
+    'glas': 'glass', 'glass': 'glass', 'transparent': 'glass', 'kristall': 'glass',
+    'draht': 'wireframe', 'wire': 'wireframe', 'gitter': 'wireframe'
+  },
+  colors: {
+    'rot': '#dc2626', 'red': '#dc2626', 'ruby': '#dc2626',
+    'blau': '#2563eb', 'blue': '#2563eb', 'navy': '#1e3a8a',
+    'grün': '#16a34a', 'green': '#16a34a', 'lime': '#65a30d',
+    'gelb': '#eab308', 'yellow': '#eab308', 'gold': '#d97706', 'golden': '#d97706',
+    'orange': '#ea580c', 'amber': '#d97706',
+    'lila': '#7c3aed', 'violett': '#8b5cf6', 'purple': '#7c3aed', 'violet': '#8b5cf6',
+    'rosa': '#ec4899', 'pink': '#ec4899',
+    'schwarz': '#111827', 'black': '#111827',
+    'weiß': '#f8fafc', 'white': '#f8fafc',
+    'grau': '#475569', 'grey': '#475569', 'gray': '#475569', 'silber': '#94a3b8', 'silver': '#94a3b8',
+    'braun': '#92400e', 'brown': '#92400e', 'bronze': '#92400e',
+    'cyan': '#06b6d4', 'turquoise': '#14b8a6', 'türkis': '#14b8a6'
+  },
+  sizes: {
+    'klein': 0.5, 'small': 0.5, 'tiny': 0.3, 'winzig': 0.3,
+    'groß': 1.5, 'big': 1.5, 'large': 2, 'riesig': 2.5, 'huge': 2.5,
+    'mittel': 1, 'medium': 1, 'normal': 1
+  }
+};
+
+// === INITIALISIERUNG ===
+window.onload = function() {
+  if (typeof THREE === 'undefined') {
+    document.getElementById('status').innerHTML = '❌ Fehler: Three.js nicht geladen. Internetverbindung prüfen.';
+    document.getElementById('status').className = 'error';
+    return;
+  }
+  
+  try {
+    init3D();
+    document.getElementById('loader').classList.add('hidden');
+    document.getElementById('status').innerHTML = '✅ Bereit • KI-Assistent aktiv';
+    generate();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('status').innerHTML = '❌ Fehler: ' + e.message;
+    document.getElementById('status').className = 'error';
+  }
+};
+
+function init3D() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0f172a);
+  scene.fog = new THREE.Fog(0x0f172a, 200, 1000);
+
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+  camera.position.set(200, 150, 200);
+  camera.lookAt(0, 50, 0);
+
+  renderer = new THREE.WebGLRenderer({ 
+    canvas: document.getElementById('canvas'), 
+    antialias: true, 
+    alpha: true,
+    powerPreference: "high-performance"
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  // Beleuchtung
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambientLight);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+  dirLight.position.set(100, 200, 100);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.width = 2048;
+  dirLight.shadow.mapSize.height = 2048;
+  scene.add(dirLight);
+
+  const rimLight = new THREE.PointLight(0xd97706, 0.5, 500);
+  rimLight.position.set(-100, 100, -100);
+  scene.add(rimLight);
+
+  // Grid
+  const gridHelper = new THREE.GridHelper(400, 40, 0x334155, 0x1e293b);
+  gridHelper.material.opacity = 0.4;
+  gridHelper.material.transparent = true;
+  scene.add(gridHelper);
+
+  // Boden für Schatten
+  const planeGeometry = new THREE.PlaneGeometry(500, 500);
+  const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.3 });
+  const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+  plane.rotation.x = -Math.PI / 2;
+  plane.receiveShadow = true;
+  scene.add(plane);
+
+  // Controls
+  const canvas = document.getElementById('canvas');
+  canvas.addEventListener('mousedown', onMouseDown);
+  canvas.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', () => isDragging = false);
+  canvas.addEventListener('wheel', onWheel, { passive: false });
+  window.addEventListener('resize', onResize);
+  
+  // Touch Support
+  canvas.addEventListener('touchstart', onTouchStart, {passive: false});
+  canvas.addEventListener('touchmove', onTouchMove, {passive: false});
+  
+  animate();
+}
+
+// === KI GENERIERUNG (CLIENT-SIDE) ===
+function kiGenerate() {
+  const prompt = document.getElementById('kiPrompt').value.toLowerCase().trim();
+  if (!prompt) {
+    showToast('Bitte gib eine Beschreibung ein!', true);
+    return;
+  }
+
+  const result = parsePrompt(prompt);
+  applyKIResult(result);
+  
+  // Status anzeigen
+  const statusDiv = document.getElementById('kiStatus');
+  statusDiv.innerHTML = `✅ Erkannt: ${result.shapeName}, ${result.matName}, ${result.colorName}, ${result.w}mm`;
+  statusDiv.classList.add('show');
+  
+  showToast(`🎨 Generiert: ${result.colorName}e ${result.matName}-${result.shapeName}`);
+}
+
+function setPrompt(text) {
+  document.getElementById('kiPrompt').value = text;
+  kiGenerate();
+}
+
+function parsePrompt(text) {
+  let shape = 'box', shapeName = 'Box';
+  let material = 'standard', matName = 'Standard';
+  let color = '#d97706', colorName = 'Orange';
+  let baseSize = 100;
+  
+  // Shape erkennen
+  for (const [key, val] of Object.entries(vocab.shapes)) {
+    if (text.includes(key)) {
+      shape = val;
+      shapeName = val.charAt(0).toUpperCase() + val.slice(1);
+      if (val === 'box') shapeName = 'Box';
+      if (val === 'sphere') shapeName = 'Kugel';
+      if (val === 'cylinder') shapeName = 'Zylinder';
+      if (val === 'cone') shapeName = 'Kegel';
+      if (val === 'torus') shapeName = 'Ring';
+      break;
+    }
+  }
+  
+  // Material erkennen
+  for (const [key, val] of Object.entries(vocab.materials)) {
+    if (text.includes(key)) {
+      material = val;
+      matName = val === 'metal' ? 'Metall' : val === 'plastic' ? 'Kunststoff' : val === 'glass' ? 'Glas' : 'Standard';
+      break;
+    }
+  }
+  
+  // Farbe erkennen
+  for (const [key, val] of Object.entries(vocab.colors)) {
+    if (text.includes(key)) {
+      color = val;
+      colorName = key.charAt(0).toUpperCase() + key.slice(1);
+      // Deutsche Farbnamen normalisieren
+      if (key === 'rot') colorName = 'Rot';
+      if (key === 'blau') colorName = 'Blau';
+      if (key === 'grün') colorName = 'Grün';
+      if (key === 'gelb') colorName = 'Gelb';
+      break;
+    }
+  }
+  
+  // Größen-Multiplikator
+  let sizeMult = 1;
+  for (const [key, val] of Object.entries(vocab.sizes)) {
+    if (text.includes(key)) {
+      sizeMult = val;
+      break;
+    }
+  }
+  
+  // Zahlen erkennen (erste Zahl = Größe)
+  const numMatch = text.match(/(\d+)/);
+  if (numMatch) {
+    baseSize = parseInt(numMatch[1]);
+    // Einheit erkennen
+    if (text.includes('cm')) baseSize *= 10;
+    else if (text.includes('m') && !text.includes('mm')) baseSize *= 1000;
+  }
+  
+  const finalSize = Math.min(400, Math.max(20, Math.round(baseSize * sizeMult)));
+  
+  return {
+    shape, shapeName, mat: material, matName, color, colorName,
+    w: finalSize, h: finalSize, d: finalSize
+  };
+}
+
+function applyKIResult(r) {
+  document.getElementById('shape').value = r.shape;
+  document.getElementById('mat').value = r.mat;
+  document.getElementById('color').value = r.color;
+  document.getElementById('w').value = r.w;
+  document.getElementById('h').value = r.h;
+  document.getElementById('d').value = r.d;
+  
+  updateLabels();
+  updateShapeLabel();
+  generate();
+}
+
+// === OPEN SOURCE SEARCH (CORS-frei: Direktlinks) ===
+function searchAll() {
+  const q = document.getElementById('searchInput').value;
+  if (!q) return;
+  searchThingiverse();
+}
+
+function searchThingiverse() {
+  const q = document.getElementById('searchInput').value || '3d model';
+  const url = `https://www.thingiverse.com/search?q=${encodeURIComponent(q)}&type=things&sort=relevant`;
+  window.open(url, '_blank');
+  showToast('🔍 Thingiverse geöffnet');
+}
+
+function searchPrintables() {
+  const q = document.getElementById('searchInput').value || '3d model';
+  const url = `https://www.printables.com/search/models?q=${encodeURIComponent(q)}`;
+  window.open(url, '_blank');
+  showToast('🔍 Printables geöffnet');
+}
+
+function searchGitHub() {
+  const q = document.getElementById('searchInput').value || 'model';
+  const url = `https://github.com/search?q=${encodeURIComponent(q + ' filetype:stl')}type=code`;
+  window.open(url, '_blank');
+  showToast('🔍 GitHub STL-Suche geöffnet');
+}
+
+function searchYouMagine() {
+  const q = document.getElementById('searchInput').value || 'design';
+  const url = `https://www.youmagine.com/designs?query=${encodeURIComponent(q)}`;
+  window.open(url, '_blank');
+  showToast('🔍 YouMagine geöffnet');
+}
+
+// === 3D GENERIERUNG ===
+function liveUpdate() {
+  updateLabels();
+  generate();
+}
+
+function updateLabels() {
+  document.getElementById('wv').textContent = document.getElementById('w').value;
+  document.getElementById('hv').textContent = document.getElementById('h').value;
+  document.getElementById('dv').textContent = document.getElementById('d').value;
+}
+
+function updateShapeLabel() {
+  const labels = { box: 'Box', sphere: 'Kugel', cylinder: 'Zylinder', cone: 'Kegel', torus: 'Torus', knot: 'Knoten' };
+  document.getElementById('shapeLabel').textContent = labels[document.getElementById('shape').value] || 'Box';
+}
+
+function generate() {
+  if (mesh) {
+    scene.remove(mesh);
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+    mesh = null;
+  }
+
+  const w = parseInt(document.getElementById('w').value);
+  const h = parseInt(document.getElementById('h').value);
+  const d = parseInt(document.getElementById('d').value);
+  const shape = document.getElementById('shape').value;
+  const matType = document.getElementById('mat').value;
+  const color = document.getElementById('color').value;
+
+  let geometry;
+  const wScale = w / 10, hScale = h / 10, dScale = d / 10; // Skalierung für bessere Ansicht
+  
+  switch(shape) {
+    case 'box':
+      geometry = new THREE.BoxGeometry(wScale, hScale, dScale);
+      break;
+    case 'sphere':
+      geometry = new THREE.SphereGeometry(Math.max(wScale, hScale, dScale) / 2, 64, 64);
+      break;
+    case 'cylinder':
+      geometry = new THREE.CylinderGeometry(wScale/2, wScale/2, hScale, 64);
+      break;
+    case 'cone':
+      geometry = new THREE.ConeGeometry(wScale/2, hScale, 64);
+      break;
+    case 'torus':
+      geometry = new THREE.TorusGeometry(Math.max(wScale, dScale)/2, Math.min(wScale, dScale)/6, 32, 100);
+      break;
+    case 'knot':
+      geometry = new THREE.TorusKnotGeometry(Math.max(wScale, dScale)/3, Math.min(wScale, dScale)/10, 128, 16);
+      break;
+    default:
+      geometry = new THREE.BoxGeometry(wScale, hScale, dScale);
+  }
+
+  let material;
+  if (matType === 'wireframe') {
+    material = new THREE.MeshBasicMaterial({ color: color, wireframe: true });
+  } else if (matType === 'glass') {
+    material = new THREE.MeshPhysicalMaterial({ 
+      color: color, metalness: 0, roughness: 0, transmission: 0.9, transparent: true, opacity: 0.4, thickness: 2
+    });
+  } else {
+    const params = {
+      standard: { roughness: 0.7, metalness: 0 },
+      metal: { roughness: 0.2, metalness: 0.9 },
+      plastic: { roughness: 0.6, metalness: 0.1 }
+    }[matType] || { roughness: 0.7, metalness: 0 };
+    
+    material = new THREE.MeshStandardMaterial({ 
+      color: color, 
+      roughness: params.roughness, 
+      metalness: params.metalness,
+      envMapIntensity: 1
+    });
+  }
+
+  mesh = new THREE.Mesh(geometry, material);
+  
+  // Position anpassen
+  if (shape === 'torus' || shape === 'knot') {
+    mesh.position.y = dScale/2 + dScale/6;
+  } else if (shape === 'sphere') {
+    mesh.position.y = Math.max(wScale, hScale, dScale) / 2;
+  } else {
+    mesh.position.y = hScale / 2;
+  }
+  
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+
+  // Berechnungen
+  let volume, surface;
+  if (shape === 'box') {
+    volume = (w * h * d) / 1000; // cm³
+    surface = 2 * (w*h + w*d + h*d) / 100; // cm²
+  } else if (shape === 'sphere') {
+    const r = Math.max(w, h, d) / 2;
+    volume = (4/3) * Math.PI * Math.pow(r, 3) / 1000;
+    surface = 4 * Math.PI * r * r / 100;
+  } else {
+    volume = (w * h * d) / 1000 * 0.7; // Schätzung
+    surface = (w * h) / 100 * 2.5;
+  }
+  
+  document.getElementById('vol').textContent = volume.toFixed(1) + ' cm³';
+  document.getElementById('area').textContent = surface.toFixed(1) + ' cm²';
+}
+
+function applyPreset(w, h, d, shape, color, mat) {
+  document.getElementById('w').value = w;
+  document.getElementById('h').value = h;
+  document.getElementById('d').value = d;
+  document.getElementById('shape').value = shape;
+  document.getElementById('color').value = color;
+  document.getElementById('mat').value = mat;
+  updateLabels();
+  updateShapeLabel();
+  generate();
+  showToast('⚡ Preset geladen');
+}
+
+function resetScene() {
+  if (mesh) {
+    scene.remove(mesh);
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+    mesh = null;
+  }
+  document.getElementById('w').value = 100;
+  document.getElementById('h').value = 100;
+  document.getElementById('d').value = 100;
+  updateLabels();
+  generate();
+  showToast('🗑️ Szene zurückgesetzt');
+}
+
+// === EXPORT ===
+function exportFile(type) {
+  if (!mesh) {
+    showToast('Kein Objekt zum Exportieren!', true);
+    return;
+  }
+
+  const geometry = mesh.geometry.clone();
+  if (geometry.index) geometry.toNonIndexed();
+  
+  // Transformieren
+  geometry.translate(0, mesh.position.y, 0);
+  geometry.scale(10, 10, 10); // Zurück zu mm
+  
+  const pos = geometry.attributes.position;
+  let content = '';
+  let filename = `HS3D_${Date.now()}.${type}`;
+
+  if (type === 'stl') {
+    content = `solid HS3D_Model\n`;
+    // Normale berechnen (einfache Facetten-Normalen)
+    for (let i = 0; i < pos.count; i += 3) {
+      const x1 = pos.getX(i), y1 = pos.getY(i), z1 = pos.getZ(i);
+      const x2 = pos.getX(i+1), y2 = pos.getY(i+1), z2 = pos.getZ(i+1);
+      const x3 = pos.getX(i+2), y3 = pos.getY(i+2), z3 = pos.getZ(i+2);
+      
+      // Kreuzprodukt für Normale
+      const u = [x2-x1, y2-y1, z2-z1];
+      const v = [x3-x1, y3-y1, z3-z1];
+      const n = [
+        u[1]*v[2] - u[2]*v[1],
+        u[2]*v[0] - u[0]*v[2],
+        u[0]*v[1] - u[1]*v[0]
+      ];
+      // Normalisieren
+      const len = Math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2]);
+      const nn = len > 0 ? [n[0]/len, n[1]/len, n[2]/len] : [0,0,1];
+      
+      content += `  facet normal ${nn[0].toFixed(6)} ${nn[1].toFixed(6)} ${nn[2].toFixed(6)}\n`;
+      content += `    outer loop\n`;
+      content += `      vertex ${x1.toFixed(4)} ${y1.toFixed(4)} ${z1.toFixed(4)}\n`;
+      content += `      vertex ${x2.toFixed(4)} ${y2.toFixed(4)} ${z2.toFixed(4)}\n`;
+      content += `      vertex ${x3.toFixed(4)} ${y3.toFixed(4)} ${z3.toFixed(4)}\n`;
+      content += `    endloop\n`;
+      content += `  endfacet\n`;
+    }
+    content += `endsolid HS3D_Model`;
+  } else if (type === 'obj') {
+    content = `# HS-3D Lab Export\n`;
+    for (let i = 0; i < pos.count; i++) {
+      content += `v ${pos.getX(i).toFixed(4)} ${pos.getY(i).toFixed(4)} ${pos.getZ(i).toFixed(4)}\n`;
+    }
+    for (let i = 1; i <= pos.count; i += 3) {
+      content += `f ${i} ${i+1} ${i+2}\n`;
+    }
+  }
+
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  showToast(`📦 Exportiert: ${filename}`);
+}
+
+// === CONTROLS ===
+function onMouseDown(e) {
+  isDragging = true;
+  previousMousePosition = { x: e.clientX, y: e.clientY };
+}
+
+function onMouseMove(e) {
+  if (!isDragging) return;
+  
+  const deltaX = e.clientX - previousMousePosition.x;
+  const deltaY = e.clientY - previousMousePosition.y;
+  
+  if (mesh) {
+    mesh.rotation.y += deltaX * 0.01;
+    mesh.rotation.x += deltaY * 0.01;
+  }
+  
+  previousMousePosition = { x: e.clientX, y: e.clientY };
+}
+
+function onWheel(e) {
+  e.preventDefault();
+  camera.position.multiplyScalar(1 + e.deltaY * 0.001);
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// Touch Support
+let touchStart = { x: 0, y: 0 };
+function onTouchStart(e) {
+  if (e.touches.length === 1) {
+    isDragging = true;
+    touchStart.x = e.touches[0].clientX;
+    touchStart.y = e.touches[0].clientY;
+  }
+}
+
+function onTouchMove(e) {
+  if (!isDragging || e.touches.length !== 1) return;
+  e.preventDefault();
+  
+  const deltaX = e.touches[0].clientX - touchStart.x;
+  const deltaY = e.touches[0].clientY - touchStart.y;
+  
+  if (mesh) {
+    mesh.rotation.y += deltaX * 0.01;
+    mesh.rotation.x += deltaY * 0.01;
+  }
+  
+  touchStart.x = e.touches[0].clientX;
+  touchStart.y = e.touches[0].clientY;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  
+  if (mesh && document.getElementById('rotCheck').checked && !isDragging) {
+    mesh.rotation.y += 0.005;
+  }
+  
+  renderer.render(scene, camera);
+}
+
+// === UTILS ===
+function showToast(msg, isError = false) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = isError ? 'error show' : 'show';
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
